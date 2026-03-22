@@ -21,7 +21,7 @@ export default function LogPage() {
 
   const [hadHeadache, setHadHeadache] = useState(null)
   const [hadMigraine, setHadMigraine] = useState(null)
-  const [medication, setMedication] = useState(null)
+  const [medications, setMedications] = useState([])
   const [saving, setSaving] = useState(false)
   const [saved, setSaved] = useState(false)
 
@@ -30,7 +30,7 @@ export default function LogPage() {
     if (existing) {
       setHadHeadache(existing.hadHeadache)
       setHadMigraine(existing.hadMigraine)
-      setMedication(existing.medication || null)
+      setMedications(existing.medication || [])
       setSaved(true)
     }
   }, [existing])
@@ -38,7 +38,22 @@ export default function LogPage() {
   const showMedQuestion = hadHeadache === true || hadMigraine === true
 
   const canSave = hadHeadache !== null && hadMigraine !== null &&
-                  (!showMedQuestion || medication !== null)
+                  (!showMedQuestion || medications.length > 0)
+
+  const toggleMed = (id) => {
+    if (id === 'none') {
+      // Nothing is exclusive — selecting it clears everything else
+      setMedications(prev => prev.includes('none') ? [] : ['none'])
+    } else {
+      // Selecting a real med clears 'none'
+      setMedications(prev => {
+        const without = prev.filter(m => m !== 'none')
+        return without.includes(id)
+          ? without.filter(m => m !== id)
+          : [...without, id]
+      })
+    }
+  }
 
   const handleSave = async () => {
     if (!canSave || saving) return
@@ -48,7 +63,7 @@ export default function LogPage() {
         date: today,
         hadHeadache,
         hadMigraine,
-        medication: showMedQuestion ? medication : 'none',
+        medication: showMedQuestion ? medications : ['none'],
       })
       setSaved(true)
     } finally {
@@ -57,6 +72,12 @@ export default function LogPage() {
   }
 
   const handleEdit = () => setSaved(false)
+
+  const medLabel = (meds) => {
+    if (!meds || meds.length === 0) return null
+    if (meds.includes('none')) return null
+    return meds.map(m => m.charAt(0).toUpperCase() + m.slice(1)).join(' + ')
+  }
 
   if (loading) {
     return (
@@ -96,9 +117,9 @@ export default function LogPage() {
             <span className={`px-3 py-1 rounded-full text-sm font-display font-semibold border ${hadMigraine ? 'pill-yes' : 'pill-no'}`}>
               {hadMigraine ? '⚡ Migraine' : '✓ No Migraine'}
             </span>
-            {medication && medication !== 'none' && (
+            {medLabel(medications) && (
               <span className="px-3 py-1 rounded-full text-sm font-display font-semibold border border-amber-400/50 text-amber-400 bg-amber-400/10">
-                💊 {medication.charAt(0).toUpperCase() + medication.slice(1)}
+                💊 {medLabel(medications)}
               </span>
             )}
           </div>
@@ -124,7 +145,7 @@ export default function LogPage() {
                   key={String(val)}
                   onClick={() => {
                     setHadHeadache(val)
-                    if (!val) { setHadMigraine(false); setMedication('none') }
+                    if (!val) { setHadMigraine(false); setMedications(['none']) }
                   }}
                   className={`py-4 rounded-2xl font-display font-semibold text-lg border-2 transition-all active:scale-95 touch-manipulation
                     ${hadHeadache === val
@@ -138,7 +159,7 @@ export default function LogPage() {
             </div>
           </div>
 
-          {/* Q2: Migraine — only if headache */}
+          {/* Q2: Migraine */}
           {hadHeadache === true && (
             <div className="card page-enter">
               <div className="flex items-center gap-3 mb-4">
@@ -165,23 +186,24 @@ export default function LogPage() {
             </div>
           )}
 
-          {/* Q3: Medication */}
+          {/* Q3: Medication — multi select */}
           {showMedQuestion && hadMigraine !== null && (
             <div className="card page-enter">
-              <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center gap-3 mb-2">
                 <div className="w-8 h-8 rounded-xl bg-amber-400/20 flex items-center justify-center flex-shrink-0">
                   <Pill size={16} className="text-amber-400" />
                 </div>
                 <h2 className="font-display font-semibold text-lg">What did you take?</h2>
               </div>
+              <p className="text-white/30 text-xs font-body mb-4 ml-11">Select all that apply</p>
               <div className="space-y-2">
                 {MEDS.map(med => {
                   const Icon = med.icon
-                  const isSelected = medication === med.id
+                  const isSelected = medications.includes(med.id)
                   return (
                     <button
                       key={med.id}
-                      onClick={() => setMedication(med.id)}
+                      onClick={() => toggleMed(med.id)}
                       className={`w-full flex items-center gap-3 px-4 py-4 rounded-2xl border-2 transition-all active:scale-[0.98] touch-manipulation
                         ${isSelected ? med.color : 'bg-ink-700 border-white/10 text-white/50 hover:border-white/20'}`}
                     >
@@ -206,7 +228,7 @@ export default function LogPage() {
                 <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 Saving…
               </span>
-            ) : existing ? 'Update Entry' : 'Save Today\'s Log'}
+            ) : existing ? 'Update Entry' : "Save Today's Log"}
           </button>
         </div>
       )}

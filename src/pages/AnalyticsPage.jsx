@@ -1,12 +1,13 @@
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell } from 'recharts'
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
 import { Download, Flame, Activity, Brain, Pill } from 'lucide-react'
 import { useEntries } from '../hooks/useEntries'
 import { computeStats, exportToCSV } from '../utils/analytics'
 
 function StatCard({ icon: Icon, label, value, sub, color = 'text-pulse' }) {
+  const bgColor = color.replace('text-', 'bg-') 
   return (
     <div className="card flex items-center gap-4">
-      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${color.replace('text-', 'bg-')}/20`}>
+      <div className={`w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 ${bgColor}/20`}>
         <Icon size={20} className={color} />
       </div>
       <div>
@@ -58,8 +59,8 @@ export default function AnalyticsPage() {
         <h1 className="font-display text-3xl font-bold">Insights</h1>
         <button
           onClick={() => exportToCSV(entries)}
-          className="flex items-center gap-2 bg-ink-700 hover:bg-ink-600 border border-white/10 
-                     text-white/70 font-display font-semibold text-sm px-4 py-2 rounded-2xl 
+          className="flex items-center gap-2 bg-ink-700 hover:bg-ink-600 border border-white/10
+                     text-white/70 font-display font-semibold text-sm px-4 py-2 rounded-2xl
                      transition-all active:scale-95 touch-manipulation"
         >
           <Download size={14} />
@@ -94,7 +95,7 @@ export default function AnalyticsPage() {
           icon={Pill}
           label="Triptans"
           value={stats.triptan}
-          sub={`${stats.naproxen} naproxen`}
+          sub={`${stats.naproxen} naproxen · ${stats.both} both`}
           color="text-purple-400"
         />
       </div>
@@ -115,7 +116,6 @@ export default function AnalyticsPage() {
         </div>
       )}
 
-      
       {/* 30-day strip */}
       <div className="card mb-6">
         <h2 className="font-display font-bold text-base mb-4">Last 30 Days</h2>
@@ -125,12 +125,13 @@ export default function AnalyticsPage() {
               : day.headache ? '#f59e0b'
               : day.clear ? '#4ecdc4'
               : 'rgba(255,255,255,0.07)'
+            const height = day.migraine ? 32 : day.headache ? 22 : day.clear ? 14 : 6
             return (
               <div
                 key={i}
                 title={`${day.label}: ${day.migraine ? 'Migraine' : day.headache ? 'Headache' : day.clear ? 'Clear' : 'No data'}`}
                 className="flex-1 rounded-sm"
-                style={{ backgroundColor: color, height: day.migraine ? 32 : day.headache ? 22 : day.clear ? 14 : 6 }}
+                style={{ backgroundColor: color, height }}
               />
             )
           })}
@@ -141,7 +142,6 @@ export default function AnalyticsPage() {
         </div>
       </div>
 
-
       {/* Medication breakdown */}
       <div className="card">
         <h2 className="font-display font-bold text-base mb-4">Medication Use</h2>
@@ -149,9 +149,10 @@ export default function AnalyticsPage() {
           {[
             { label: 'Triptan', value: stats.triptan, color: 'bg-pulse', textColor: 'text-pulse' },
             { label: 'Naproxen', value: stats.naproxen, color: 'bg-amber-400', textColor: 'text-amber-400' },
+            { label: 'Both', value: stats.both, color: 'bg-purple-400', textColor: 'text-purple-400' },
             { label: 'Nothing', value: stats.nothing, color: 'bg-white/20', textColor: 'text-white/40' },
           ].map(({ label, value, color, textColor }) => {
-            const total = stats.triptan + stats.naproxen + stats.nothing
+            const total = stats.triptan + stats.naproxen + stats.both + stats.nothing
             const pct = total > 0 ? Math.round((value / total) * 100) : 0
             return (
               <div key={label}>

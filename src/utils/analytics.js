@@ -1,15 +1,21 @@
-import { format, parseISO, differenceInDays, subDays } from 'date-fns'
+import { format, parseISO, subDays } from 'date-fns'
 
 export function exportToCSV(entries) {
   const headers = ['Date', 'Headache', 'Migraine', 'Medication']
   const rows = entries
+    .slice()
     .sort((a, b) => a.date.localeCompare(b.date))
-    .map(e => [
-      e.date,
-      e.hadHeadache ? 'Yes' : 'No',
-      e.hadMigraine ? 'Yes' : 'No',
-      e.medication || 'None',
-    ])
+    .map(e => {
+      const meds = Array.isArray(e.medication)
+        ? e.medication.filter(m => m !== 'none').join('+') || 'None'
+        : e.medication || 'None'
+      return [
+        e.date,
+        e.hadHeadache ? 'Yes' : 'No',
+        e.hadMigraine ? 'Yes' : 'No',
+        meds,
+      ]
+    })
 
   const csv = [headers, ...rows].map(r => r.join(',')).join('\n')
   const blob = new Blob([csv], { type: 'text/csv' })
@@ -21,20 +27,25 @@ export function exportToCSV(entries) {
   URL.revokeObjectURL(url)
 }
 
+const hasMed = (entry, med) => {
+  if (Array.isArray(entry.medication)) return entry.medication.includes(med)
+  return entry.medication === med
+}
+
 export function computeStats(entries) {
   if (!entries.length) return null
 
-const sorted = entries.slice().sort((a, b) => b.date.localeCompare(a.date))
-
   const total = entries.length
   const migraineCount = entries.filter(e => e.hadMigraine).length
-  const headacheCount = entries.filter(e => e.hadHeadache && !e.hadMigraine).count || 
-                        entries.filter(e => e.hadHeadache).length
-  const triptan = entries.filter(e => e.medication === 'triptan').length
-  const naproxen = entries.filter(e => e.medication === 'naproxen').length
-  const nothing = entries.filter(e => !e.medication || e.medication === 'none').length
+  const headacheCount = entries.filter(e => e.hadHeadache).length
+  const triptan = entries.filter(e => hasMed(e, 'triptan')).length
+  const naproxen = entries.filter(e => hasMed(e, 'naproxen')).length
+  const both = entries.filter(e => hasMed(e, 'triptan') && hasMed(e, 'naproxen')).length
+  const nothing = entries.filter(e => {
+    const meds = Array.isArray(e.medication) ? e.medication : [e.medication]
+    return meds.includes('none') || meds.length === 0
+  }).length
 
-  // Current streak of headache-free days
   let streak = 0
   const today = format(new Date(), 'yyyy-MM-dd')
   let checkDate = today
@@ -49,7 +60,6 @@ const sorted = entries.slice().sort((a, b) => b.date.localeCompare(a.date))
     }
   }
 
-  // Last 30 days for chart
   const last30 = []
   for (let i = 29; i >= 0; i--) {
     const date = format(subDays(new Date(), i), 'yyyy-MM-dd')
@@ -57,13 +67,12 @@ const sorted = entries.slice().sort((a, b) => b.date.localeCompare(a.date))
     last30.push({
       date,
       label: format(parseISO(date), 'MMM d'),
-      migraine: entry?.hadMigraine ? 1 : 0,
-      headache: entry?.hadHeadache && !entry?.hadMigraine ? 1 : 0,
+      migraine: entry && entry.hadMigraine ? 1 : 0,
+      headache: entry && entry.hadHeadache && !entry.hadMigraine ? 1 : 0,
       clear: entry && !entry.hadHeadache && !entry.hadMigraine ? 1 : 0,
     })
   }
 
-  // Monthly breakdown
   const byMonth = {}
   entries.forEach(e => {
     const month = e.date.slice(0, 7)
@@ -78,7 +87,9 @@ const sorted = entries.slice().sort((a, b) => b.date.localeCompare(a.date))
     .slice(-6)
     .map(([month, data]) => ({
       label: format(parseISO(month + '-01'), 'MMM yy'),
-      ...data
+      migraines: data.migraines,
+      headaches: data.headaches,
+      total: data.total,
     }))
 
   return {
@@ -88,6 +99,7 @@ const sorted = entries.slice().sort((a, b) => b.date.localeCompare(a.date))
     migraineRate: Math.round((migraineCount / total) * 100),
     triptan,
     naproxen,
+    both,
     nothing,
     streak,
     last30,

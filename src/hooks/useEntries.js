@@ -8,6 +8,16 @@ export function useEntries() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
 
+  const mapEntry = (e) => ({
+    ...e,
+    hadHeadache: e.had_headache,
+    hadMigraine: e.had_migraine,
+    // Always return medication as an array
+    medication: Array.isArray(e.medication)
+      ? e.medication
+      : e.medication ? [e.medication] : ['none'],
+  })
+
   const fetchEntries = useCallback(async () => {
     if (!user) return
     setLoading(true)
@@ -19,14 +29,7 @@ export function useEntries() {
         .order('date', { ascending: false })
 
       if (error) throw error
-
-      // Map snake_case DB columns to camelCase for the app
-      const mapped = (data || []).map(e => ({
-        ...e,
-        hadHeadache: e.had_headache,
-        hadMigraine: e.had_migraine,
-      }))
-      setEntries(mapped)
+      setEntries((data || []).map(mapEntry))
     } catch (e) {
       setError(e.message)
     } finally {
@@ -48,7 +51,9 @@ export function useEntries() {
             date: entry.date,
             had_headache: entry.hadHeadache,
             had_migraine: entry.hadMigraine,
-            medication: entry.medication,
+            medication: Array.isArray(entry.medication)
+              ? entry.medication
+              : [entry.medication || 'none'],
           },
           { onConflict: 'user_id,date' }
         )
@@ -57,8 +62,7 @@ export function useEntries() {
 
       if (error) throw error
 
-      const mapped = { ...data, hadHeadache: data.had_headache, hadMigraine: data.had_migraine }
-
+      const mapped = mapEntry(data)
       setEntries(prev => {
         const idx = prev.findIndex(e => e.date === mapped.date)
         if (idx >= 0) {
