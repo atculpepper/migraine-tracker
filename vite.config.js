@@ -7,7 +7,6 @@ export default defineConfig({
     react(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png'],
       manifest: {
         name: 'Migraine Tracker',
         short_name: 'Migraines',
@@ -23,9 +22,14 @@ export default defineConfig({
       }
     })
   ],
-  server: {
-    proxy: {
-      '/api': 'http://localhost:7071'
+  build: {
+    rollupOptions: {
+      onwarn(warning, warn) {
+        warn(warning)
+      }
     }
+  },
+  esbuild: {
+    target: 'es2020'
   }
 })
