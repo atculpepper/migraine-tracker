@@ -24,7 +24,7 @@ export function exportToCSV(entries) {
 export function computeStats(entries) {
   if (!entries.length) return null
 
-  const sorted = [...entries].sort((a, b) => b.date.localeCompare(a.date))
+const sorted = entries.slice().sort((a, b) => b.date.localeCompare(a.date));
   const total = entries.length
   const migraineCount = entries.filter(e => e.hadMigraine).length
   const headacheCount = entries.filter(e => e.hadHeadache && !e.hadMigraine).count || 
