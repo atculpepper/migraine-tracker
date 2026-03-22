@@ -1,9 +1,6 @@
 # migraine-tracker
 simple web based migraine tracker
 
-# Migraine Tracker
-
-A personal web app for tracking daily headaches and migraines, built as a Progressive Web App (PWA) so it works on any device and can be installed on your phone's home screen.
 
 ## Features
 
